@@ -1,6 +1,6 @@
 # DSCC-202-402 Spring 2026
 
-Course materials for Data Science at Scale - Apache Spark Fundamentals!
+Course materials for Data Science at Scale - Apache Spark Fundamentals
 
 ## Overview
 
