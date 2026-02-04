@@ -134,9 +134,8 @@ print("✅ Verification utilities loaded")
 # Expected result: One row with count = 3333
 
 transaction_count_df = spark.sql("""
-
-
-
+SELECT COUNT(*) AS transaction_count
+FROM samples.bakehouse.sales_transactions
 """)
 
 display(transaction_count_df)
@@ -164,9 +163,9 @@ print("✅ Task 1.2 complete: Transaction count verified")
 # Expected result: Multiple rows with payment method names
 
 payment_methods_df = spark.sql("""
-
-
-
+SELECT DISTINCT paymentMethod
+FROM samples.bakehouse.sales_transactions
+ORDER BY paymentMethod
 """)
 
 display(payment_methods_df)
@@ -195,8 +194,8 @@ print("✅ Task 1.3 complete: Payment methods identified")
 # Expected result: One row with average value around $15-25
 
 avg_value_df = spark.sql("""
-
-
+SELECT ROUND(AVG(totalPrice), 2) AS avg_transaction_value
+FROM samples.bakehouse.sales_transactions
 """)
 
 display(avg_value_df)
@@ -233,9 +232,9 @@ print(f"✅ Task 1.4 complete: Average transaction value = ${avg_value:.2f}")
 # - samples.bakehouse.sales_transactions → transactions_df
 # - samples.bakehouse.sales_customers → customers_df
 
-transactions_df =
+transactions_df = spark.table("samples.bakehouse.sales_transactions")
 
-customers_df =
+customers_df = spark.table("samples.bakehouse.sales_customers")
 
 # COMMAND ----------
 
@@ -255,7 +254,7 @@ print("✅ Task 2.1 complete: DataFrames created")
 
 # TODO: Display the schema of transactions_df
 # Call the printSchema() method on the DataFrame
-
+transactions_df.printSchema()
 
 
 # COMMAND ----------
@@ -267,16 +266,17 @@ print("✅ Task 2.1 complete: DataFrames created")
 
 # COMMAND ----------
 
+# DBTITLE 1,Untitled
 # TODO: Filter and sort high-value transactions
 # 1. Filter for totalPrice > 50 using .filter(col("totalPrice") > 50)
 # 2. Sort by totalPrice descending using .orderBy(desc("totalPrice"))
 # Hint: desc is already imported from pyspark.sql.functions
 
-from pyspark.sql.functions import desc
+from pyspark.sql.functions import col, desc
 
 high_value_df = (transactions_df
-    .filter(  )  # Your filter condition here
-    .orderBy(  )  # Your sort expression here
+    .filter(col("totalPrice") > 50)  # Your filter condition here
+    .orderBy(desc("totalPrice"))  # Your sort expression here
 )
 
 display(high_value_df)
