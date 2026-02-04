@@ -1204,14 +1204,14 @@ print(f"✅ Cleaned up working directory: {working_dir}")
 # MAGIC
 # MAGIC You've completed the comprehensive Bakehouse Analytics lab, covering:
 # MAGIC
-# MAGIC ✅ Data exploration and catalog navigation
-# MAGIC ✅ DataFrame transformations and filtering
-# MAGIC ✅ Data ingestion with multiple formats
-# MAGIC ✅ Column operations and derived calculations
-# MAGIC ✅ Aggregations and grouping
-# MAGIC ✅ DateTime manipulation and temporal analysis
-# MAGIC ✅ Complex array operations
-# MAGIC ✅ Multi-table joins and data enrichment
+# MAGIC ✅ Data exploration and catalog navigation\
+# MAGIC ✅ DataFrame transformations and filtering\
+# MAGIC ✅ Data ingestion with multiple formats\
+# MAGIC ✅ Column operations and derived calculations\
+# MAGIC ✅ Aggregations and grouping\
+# MAGIC ✅ DateTime manipulation and temporal analysis\
+# MAGIC ✅ Complex array operations\
+# MAGIC ✅ Multi-table joins and data enrichment\
 # MAGIC ✅ User-defined functions for custom logic
 # MAGIC
 # MAGIC These skills form the foundation of data engineering and analytics with Apache Spark!
