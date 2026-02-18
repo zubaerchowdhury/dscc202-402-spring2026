@@ -137,7 +137,7 @@ print("✅ Verification utilities loaded")
 
 from pyspark.sql.functions import col
 
-transactions_df =
+transactions_df = spark.table("samples.bakehouse.sales_transactions")
 
 # Apply multiple filters (some redundant)
 slow_query_df = (transactions_df
@@ -175,7 +175,7 @@ print("📝 Note: Look at the 'Optimized Logical Plan' - Catalyst consolidated t
 
 (transactions_df
  .write
- .partitionBy(  )  # Which column to partition by?
+ .partitionBy("franchiseID")  # Which column to partition by?
  .format("delta")
  .mode("overwrite")
  .save(f"{working_dir}/transactions_partitioned")
@@ -184,7 +184,7 @@ print("📝 Note: Look at the 'Optimized Logical Plan' - Catalyst consolidated t
 # Read with filter - Spark will only read relevant partitions
 filtered_df = spark.read.format("delta").load(
     f"{working_dir}/transactions_partitioned"
-).filter(  )  # Filter condition: col("franchiseID") == 3000033
+).filter(col("franchiseID") == 3000033)  # Filter condition: col("franchiseID") == 3000033
 
 # Display the execution plan
 filtered_df.explain(True)
@@ -217,18 +217,18 @@ franchises_df = spark.table("samples.bakehouse.sales_franchises")
 # INEFFICIENT APPROACH: Join then filter
 slow_join_df = (transactions_df
     .join(franchises_df, "franchiseID")
-    .filter(col("country") == "USA")
+    .filter(col("country") == "US")
 )
 
 print(f"Inefficient approach processes {transactions_df.count()} transactions")
 print(f"Filtered result: {slow_join_df.count()} rows")
 
 # TODO: Optimize join by filtering before joining
-# 1. Filter franchises_df where country == "USA"
+# 1. Filter franchises_df where country == "US"
 # 2. Join transactions_df with filtered franchises on "franchiseID"
 
-fast_franchises_df = franchises_df.filter(  )  # Filter condition for USA
-fast_join_df = transactions_df.join(  ,  )  # Join with filtered DataFrame, join column
+fast_franchises_df = franchises_df.filter(col("country") == "US")  # Filter condition for US
+fast_join_df = transactions_df.join(fast_franchises_df, "franchiseID")  # Join with filtered DataFrame, join column
 
 print(f"\nEfficient approach joins with only {fast_franchises_df.count()} franchises")
 print(f"Same filtered result: {fast_join_df.count()} rows")
@@ -269,7 +269,7 @@ print(f"📊 Efficiency gain: Reduced franchise table from {franchises_df.count(
 # TODO: Repartition to 8 partitions
 # Use .repartition(8) method on transactions_df
 
-repartitioned_df = transactions_df.
+repartitioned_df = transactions_df.repartition(8)
 
 # Write to verify partition count through file output
 (repartitioned_df
@@ -309,7 +309,7 @@ print("📝 Note: repartition() triggers a full shuffle but ensures even distrib
 # Load the repartitioned data from Task 2.1
 base_df = spark.read.format("delta").load(f"{working_dir}/repartitioned_demo")
 
-coalesced_df = base_df.
+coalesced_df = base_df.coalesce(2)
 
 # Write and verify
 (coalesced_df
@@ -408,13 +408,15 @@ duplicates_df = (base_customers_df
     # TODO: Add case variations to last_name
     # Use when(col("duplicate_id") % 2 == 0, ...) to uppercase some last names
     .withColumn("last_name",
-          # when(condition, upper(col("last_name"))).otherwise(col("last_name"))
+        when(col("duplicate_id") % 2 == 0, upper(col("last_name")))
+        .otherwise(col("last_name"))
     )
 
     # TODO: Add variations to email (some uppercase domain)
     # Use when(col("duplicate_id") % 4 == 0, ...) to uppercase some emails
     .withColumn("email_address",
-          # when(condition, upper(col("email_address"))).otherwise(col("email_address"))
+        when(col("duplicate_id") % 4 == 0, upper(col("email_address")))
+        .otherwise(col("email_address"))
     )
 
     # Drop the temporary column
@@ -455,7 +457,7 @@ dups_df = spark.read.format("delta").load(f"{working_dir}/customers_with_duplica
 # Use dropDuplicates() on key columns: customerID, first_name, last_name, email_address
 # Pass columns as a list
 
-simple_dedup_df = dups_df.dropDuplicates(  )  # List of column names
+simple_dedup_df = dups_df.dropDuplicates(["customerID", "first_name", "last_name", "email_address"])  # List of column names
 
 print(f"Original: {dups_df.count():,}")
 print(f"After simple dedup: {simple_dedup_df.count():,}")
@@ -487,16 +489,16 @@ print("✅ Task 3.2 complete: Simple deduplication attempted")
 from pyspark.sql.functions import lower
 
 normalized_df = (dups_df
-    .withColumn("lcFirstName", lower(col(  )))  # Lowercase which column?
-    .withColumn("lcLastName",  )  # lower(col("last_name"))
-    .withColumn("lcEmail",  )  # lower(col("email_address"))
+    .withColumn("lcFirstName", lower(col("first_name")))  # Lowercase which column?
+    .withColumn("lcLastName", lower(col("last_name")))  # lower(col("last_name"))
+    .withColumn("lcEmail", lower(col("email_address")))  # lower(col("email_address"))
 )
 
 # Drop duplicates based on normalized columns
-deduped_df = normalized_df.dropDuplicates(  )  # List: ["lcFirstName", "lcLastName", "lcEmail"]
+deduped_df = normalized_df.dropDuplicates(["lcFirstName", "lcLastName", "lcEmail"])  # List: ["lcFirstName", "lcLastName", "lcEmail"]
 
 # Clean up temporary columns
-final_df = deduped_df.drop(  )  # Drop lcFirstName, lcLastName, lcEmail
+final_df = deduped_df.drop("lcFirstName", "lcLastName", "lcEmail")  # Drop lcFirstName, lcLastName, lcEmail
 
 print(f"After case-insensitive dedup: {final_df.count():,}")
 print(f"Additional duplicates removed: {simple_dedup_df.count() - final_df.count():,}")
@@ -531,6 +533,7 @@ standardized_df = (dups_df
     .withColumn("lcFirstName", lower(col("first_name")))
     .withColumn("lcLastName", lower(col("last_name")))
     .withColumn("lcEmail", lower(col("email_address")))
+    .withColumn("cleanZip", regexp_replace(col("postal_zip_code"), "[^0-9]", "")) # Remove non-numeric chars
     # Normalize phone numbers (remove dashes, spaces, parentheses)
     .withColumn("cleanPhone",
         regexp_replace(regexp_replace(col("phone_number"), "[^0-9]", ""), " ", ""))
@@ -568,7 +571,7 @@ print("📝 Standardization catches duplicates with formatting differences")
 # Use .repartition(1) to create a single output file
 
 (final_standardized_df
- .repartition(  )  # How many partitions for single file?
+ .repartition(1)  # How many partitions for single file?
  .write
  .mode("overwrite")
  .format("delta")
@@ -623,16 +626,16 @@ print(f"📊 Summary: {dups_df.count():,} → {deduped_count:,} customers ({((1 
 from pyspark.sql.functions import sum, count, countDistinct, desc
 
 # Step 1: Load deduplicated customers
-clean_customers_df =   # Load from f"{working_dir}/customers_deduplicated"
+clean_customers_df = spark.read.format("delta").load(f"{working_dir}/customers_deduplicated") # Load from f"{working_dir}/customers_deduplicated"
 
 # Step 2: Load and filter franchises to US only (predicate pushdown!)
-usa_franchises_df =   # Load franchises and filter country == "USA"
+usa_franchises_df = spark.table("samples.bakehouse.sales_franchises").filter(col("country") == "US") # Load franchises and filter country == "USA"
 
 # Step 3: Join transactions with clean customers, then with USA franchises
 # Use "customerID" for customer join, "franchiseID" for franchise join
 enriched_transactions_df = (transactions_df
-    .join(  ,  )  # Join with clean_customers_df on "customerID"
-    .join(  ,  )  # Join with usa_franchises_df on "franchiseID"
+    .join(clean_customers_df, "customerID")  # Join with clean_customers_df on "customerID"
+    .join(usa_franchises_df, "franchiseID")  # Join with usa_franchises_df on "franchiseID"
 )
 
 # Step 4: Calculate franchise performance metrics
@@ -641,24 +644,24 @@ enriched_transactions_df = (transactions_df
 # the DataFrame reference syntax: usa_franchises_df["column_name"]
 franchise_report_df = (enriched_transactions_df
     .groupBy(
-          # "franchiseID"
-          # usa_franchises_df["name"] - disambiguate franchise name
-          # usa_franchises_df["city"] - disambiguate franchise city
-          # usa_franchises_df["country"] - disambiguate franchise country
+          "franchiseID",
+          usa_franchises_df["name"], # disambiguate franchise name
+          usa_franchises_df["city"], # disambiguate franchise city
+          usa_franchises_df["country"] # disambiguate franchise country
     )
     .agg(
-          # sum("totalPrice").alias("total_revenue")
-          # count("transactionID").alias("transaction_count")
-          # countDistinct("customerID").alias("unique_customers")
+          sum("totalPrice").alias("total_revenue"),
+          count("transactionID").alias("transaction_count"),
+          countDistinct("customerID").alias("unique_customers")
     )
-    .orderBy(  )  # desc("total_revenue")
+    .orderBy(desc("total_revenue"))  # desc("total_revenue")
 )
 
 display(franchise_report_df)
 
 # Step 5: Write optimized output
 (franchise_report_df
- .repartition(  )  # Choose appropriate partition count (e.g., 1-4)
+ .repartition(1)  # Choose appropriate partition count (e.g., 1-4)
  .write
  .mode("overwrite")
  .format("delta")
@@ -671,7 +674,7 @@ display(franchise_report_df)
 report_df = spark.read.format("delta").load(f"{working_dir}/franchise_performance_report")
 assert report_df.count() > 0, "Should have franchise performance data"
 assert "franchiseID" in report_df.columns, "Should include franchiseID"
-print(f"✅ Challenge complete: Generated report for {report_df.count()} USA franchises")
+print(f"✅ Challenge complete: Generated report for {report_df.count()} US franchises")
 print("🎉 Congratulations! You've mastered Spark performance optimization!")
 
 # COMMAND ----------
