@@ -720,7 +720,7 @@ print("📝 Marketing can now target specific channels for specific franchise lo
 # COMMAND ----------
 
 # TODO: Join streaming data with static franchises table
-# Enrich stream with franchise name and city information
+# Enrich stream with franchise name and city information 
 
 # Load static franchises data
 franchises_df = spark.table("samples.bakehouse.sales_franchises")
