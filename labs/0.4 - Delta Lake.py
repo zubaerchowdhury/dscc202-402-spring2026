@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "2"
+# ///
 # MAGIC %md
 # MAGIC # Delta Lake Management and Streaming
 # MAGIC
@@ -154,7 +158,7 @@ dbutils.fs.mkdirs(checkpoint_dir)
 from pyspark.sql.functions import col
 
 # Load taxi trips
-trips_df = spark.table(  )  # Table name from samples catalog
+trips_df = spark.table("samples.nyctaxi.trips").select("tpep_pickup_datetime", "tpep_dropoff_datetime", "trip_distance", "fare_amount", "pickup_zip", "dropoff_zip")  # Table name from samples catalog
 
 print(f"Loaded {trips_df.count():,} taxi trips")
 display(trips_df.limit(10))
@@ -162,8 +166,8 @@ display(trips_df.limit(10))
 # Write to Delta format
 (trips_df
  .write
- .format(  )  # Delta format
- .mode(  )  # Write mode
+ .format("delta")  # Delta format
+ .mode("overwrite")  # Write mode
  .save(f"{working_dir}/taxi_trips_delta")
 )
 
@@ -200,10 +204,10 @@ base_df = spark.read.format("delta").load(f"{working_dir}/taxi_trips_delta")
 # Add calculated columns
 enhanced_df = base_df.withColumn(
     "trip_duration_minutes",
-    round((unix_timestamp(col(  )) - unix_timestamp(col(  ))) / 60, 2)  # Dropoff and pickup columns
+    round((unix_timestamp(col("tpep_dropoff_datetime")) - unix_timestamp(col("tpep_pickup_datetime"))) / 60, 2)  # Dropoff and pickup columns
 ).withColumn(
     "avg_speed_mph",
-    round(try_divide(col(  ), col(  ) / 60), 2)  # Distance and duration columns
+    round(try_divide(col("trip_distance"), col("trip_duration_minutes") / 60), 2)  # Distance and duration columns
 )
 
 print("Enhanced schema:")
@@ -219,9 +223,9 @@ except Exception as e:
 # Now enable schema evolution
 (enhanced_df
  .write
- .format(  )  # Delta format
- .mode(  )  # Append mode
- .option(  ,  )  # Option name and value for schema merging
+ .format("delta")  # Delta format
+ .mode("append")  # Append mode
+ .option("mergeSchema", "true")  # Option name and value for schema merging
  .save(f"{working_dir}/taxi_trips_delta")
 )
 
@@ -258,7 +262,7 @@ current_df = spark.read.format("delta").load(f"{working_dir}/taxi_trips_delta")
 # Remove duplicates and cast fare_amount
 transformed_df = (current_df
     .dropDuplicates(["tpep_pickup_datetime", "pickup_zip", "dropoff_zip"])
-    .withColumn("fare_amount", col("fare_amount").cast(  ))  # Cast to DecimalType
+    .withColumn("fare_amount", col("fare_amount").cast(DecimalType(10,2)))  # Cast to DecimalType
 )
 
 print("Transformed schema:")
@@ -267,9 +271,9 @@ transformed_df.printSchema()
 # Overwrite with schema change
 (transformed_df
  .write
- .format(  )  # Delta format
- .mode(  )  # Overwrite mode
- .option(  ,  )  # Option for schema overwrite
+ .format("delta")  # Delta format
+ .mode("overwrite")  # Overwrite mode
+ .option("overwriteSchema", "true")  # Option for schema overwrite
  .save(f"{working_dir}/taxi_trips_delta")
 )
 
@@ -308,7 +312,7 @@ print("✅ Task 1.3 complete: Breaking schema change applied")
 # MAGIC -- TODO: View complete table history
 # MAGIC -- Replace with the path to your Delta table
 # MAGIC
-# MAGIC DESCRIBE HISTORY delta.`  `
+# MAGIC DESCRIBE HISTORY delta.`/Volumes/nyctaxi_catalog/analytics/workspace/taxi_trips_delta`
 
 # COMMAND ----------
 
@@ -320,13 +324,13 @@ print("✅ Task 1.3 complete: Breaking schema change applied")
 # MAGIC %sql
 # MAGIC -- TODO: Query Version 0 (original data, no calculated columns)
 # MAGIC -- Use VERSION AS OF to query a specific version
-# MAGIC SELECT * FROM delta.`  ` VERSION AS OF   LIMIT 10
+# MAGIC SELECT * FROM delta.`/Volumes/nyctaxi_catalog/analytics/workspace/taxi_trips_delta` VERSION AS OF 0 LIMIT 10
 
 # COMMAND ----------
 
 # MAGIC %sql
 # MAGIC -- TODO: Query current version (with calculated columns and DECIMAL fare_amount)
-# MAGIC SELECT * FROM delta.`  ` LIMIT 10
+# MAGIC SELECT * FROM delta.`/Volumes/nyctaxi_catalog/analytics/workspace/taxi_trips_delta` LIMIT 10
 
 # COMMAND ----------
 
@@ -337,7 +341,7 @@ print("✅ Task 1.3 complete: Breaking schema change applied")
 # MAGIC     'Version 0' AS version,
 # MAGIC     COUNT(*) AS trip_count,
 # MAGIC     AVG(fare_amount) AS avg_fare
-# MAGIC FROM delta.`  ` VERSION AS OF
+# MAGIC FROM delta.`/Volumes/nyctaxi_catalog/analytics/workspace/taxi_trips_delta` VERSION AS OF 0
 # MAGIC
 # MAGIC UNION ALL
 # MAGIC
@@ -345,7 +349,7 @@ print("✅ Task 1.3 complete: Breaking schema change applied")
 # MAGIC     'Current' AS version,
 # MAGIC     COUNT(*) AS trip_count,
 # MAGIC     AVG(CAST(fare_amount AS DOUBLE)) AS avg_fare
-# MAGIC FROM delta.`  `
+# MAGIC FROM delta.`/Volumes/nyctaxi_catalog/analytics/workspace/taxi_trips_delta`
 
 # COMMAND ----------
 
@@ -394,9 +398,9 @@ print("✅ Task 1.4 complete: Time travel and table history explored")
 # MAGIC -- Conditions: pickup_zip = 10001 AND hour between 17-19 (5PM-7PM)
 # MAGIC -- Action: Increase fare by 10% (fare * 1.10)
 # MAGIC
-# MAGIC UPDATE
-# MAGIC SET
-# MAGIC WHERE
+# MAGIC UPDATE delta.`/Volumes/nyctaxi_catalog/analytics/workspace/taxi_trips_delta`
+# MAGIC SET fare_amount = CAST(fare_amount * 1.10 AS DECIMAL(10,2))
+# MAGIC WHERE pickup_zip = 10001 AND hour(tpep_pickup_datetime) >= 17 AND hour(tpep_pickup_datetime) < 19
 
 # COMMAND ----------
 
@@ -457,8 +461,8 @@ print("✅ Task 2.1 complete: Surge pricing applied")
 # MAGIC -- TODO: Delete invalid trips
 # MAGIC -- Conditions: fare_amount <= 0 OR trip_distance < 0 OR trip_duration_minutes <= 0
 # MAGIC
-# MAGIC DELETE FROM
-# MAGIC WHERE  ;
+# MAGIC DELETE FROM delta.`/Volumes/nyctaxi_catalog/analytics/workspace/taxi_trips_delta`
+# MAGIC WHERE fare_amount <= 0 OR trip_distance < 0 OR trip_duration_minutes <= 0;
 
 # COMMAND ----------
 
@@ -538,13 +542,14 @@ all_corrections_df.createOrReplaceTempView("trip_corrections")
 # MAGIC -- When matched: UPDATE fare_amount
 # MAGIC -- When not matched: INSERT all columns
 # MAGIC
-# MAGIC MERGE INTO   AS target
+# MAGIC MERGE INTO delta.`/Volumes/nyctaxi_catalog/analytics/workspace/taxi_trips_delta` AS target
 # MAGIC USING trip_corrections AS source
-# MAGIC ON
+# MAGIC ON target.tpep_pickup_datetime = source.tpep_pickup_datetime
+# MAGIC AND target.pickup_zip = source.pickup_zip
 # MAGIC WHEN MATCHED THEN
-# MAGIC     UPDATE SET
+# MAGIC     UPDATE SET fare_amount = source.fare_amount
 # MAGIC WHEN NOT MATCHED THEN
-# MAGIC     INSERT
+# MAGIC     INSERT *
 
 # COMMAND ----------
 
@@ -579,8 +584,8 @@ print("✅ Task 2.3 complete: Daily corrections merged")
 # MAGIC %sql
 # MAGIC -- TODO: Compact files and Z-order by pickup_zip
 # MAGIC
-# MAGIC OPTIMIZE
-# MAGIC ZORDER BY (  );
+# MAGIC OPTIMIZE delta.`/Volumes/nyctaxi_catalog/analytics/workspace/taxi_trips_delta`
+# MAGIC ZORDER BY (pickup_zip);
 
 # COMMAND ----------
 
@@ -608,7 +613,7 @@ print("✅ Task 2.4 complete: Table optimized with Z-ordering")
 # MAGIC -- TODO: Preview files that will be deleted (DRY RUN)
 # MAGIC -- Note: 168 hours (7 days) is the minimum retention period
 # MAGIC
-# MAGIC VACUUM   RETAIN 168 HOURS DRY RUN;
+# MAGIC VACUUM delta.`/Volumes/nyctaxi_catalog/analytics/workspace/taxi_trips_delta` RETAIN 168 HOURS DRY RUN;
 
 # COMMAND ----------
 
@@ -616,7 +621,7 @@ print("✅ Task 2.4 complete: Table optimized with Z-ordering")
 # MAGIC -- TODO: Execute vacuum (permanently delete old files)
 # MAGIC -- Note: Files older than 168 hours (7 days) will be deleted
 # MAGIC
-# MAGIC VACUUM   RETAIN 168 HOURS;
+# MAGIC VACUUM delta.`/Volumes/nyctaxi_catalog/analytics/workspace/taxi_trips_delta` RETAIN 168 HOURS;
 
 # COMMAND ----------
 
@@ -667,8 +672,8 @@ for i in range(10):
     batch_df = sample_trips_df.filter(f"hash(tpep_pickup_datetime) % 10 = {i}")
     (batch_df
      .write
-     .format(  )  # JSON format
-     .mode(  )  # Overwrite mode
+     .format("json")  # JSON format
+     .mode("overwrite")  # Overwrite mode
      .save(f"{working_dir}/streaming_source/batch_{i}")
     )
 
@@ -703,8 +708,8 @@ print("✅ Task 3.1 complete: Streaming source simulated")
 # cloudFiles.schemaLocation: checkpoint location for inferred schema
 
 bronze_stream_df = (spark.readStream
-    .format(  )  # CloudFiles format
-    .option("cloudFiles.format",  )  # Source file format
+    .format("cloudFiles")  # CloudFiles format
+    .option("cloudFiles.format", "json")  # Source file format
     .option("cloudFiles.schemaLocation", f"{checkpoint_dir}/bronze_schema")
     .load(f"{working_dir}/streaming_source")
 )
@@ -715,10 +720,10 @@ bronze_stream_df.printSchema()
 # Write to Bronze Delta table
 bronze_query = (bronze_stream_df
     .writeStream
-    .format(  )  # Delta format
-    .outputMode(  )  # Append mode
+    .format("delta")  # Delta format
+    .outputMode("append")  # Append mode
     .option("checkpointLocation", f"{checkpoint_dir}/bronze")
-    .trigger(  )  # availableNow=True
+    .trigger(availableNow=True)  # availableNow=True
     .start(f"{working_dir}/bronze_taxi_trips")
 )
 
@@ -763,29 +768,29 @@ from pyspark.sql.functions import window, count, sum, avg, col, to_timestamp
 # Read Bronze stream and cast timestamp columns
 # Note: Auto Loader reads JSON timestamps as strings, so we need to cast them
 silver_stream_df = (spark.readStream
-    .format(  )  # Delta format
+    .format("delta")  # Delta format
     .load(f"{working_dir}/bronze_taxi_trips")
     .withColumn("tpep_pickup_datetime", to_timestamp(col("tpep_pickup_datetime")))
     .withColumn("tpep_dropoff_datetime", to_timestamp(col("tpep_dropoff_datetime")))
-    .withWatermark(  ,  )  # Column and watermark interval
+    .withWatermark("tpep_pickup_datetime" , "10 minutes")  # Column and watermark interval
     .groupBy(
-        window(col(  ),  ),  # Column and window duration
-        col(  )  # Additional grouping column
+        window(col("tpep_pickup_datetime"), "1 hour"),  # Column and window duration
+        col("pickup_zip")  # Additional grouping column
     )
     .agg(
         count("*").alias("trips_per_hour"),
-        sum(  ).alias("total_revenue"),  # Column to sum
-        avg(  ).alias("avg_trip_distance")  # Column to average
+        sum("fare_amount").alias("total_revenue"),  # Column to sum
+        avg("trip_distance").alias("avg_trip_distance")  # Column to average
     )
 )
 
 # Write aggregated stream (use "append" mode - required for windowed aggregations in Free Edition)
 silver_query = (silver_stream_df
     .writeStream
-    .format(  )  # Delta format
-    .outputMode(  )  # Append mode for windowed aggregations
+    .format("delta")  # Delta format
+    .outputMode("append")  # Append mode for windowed aggregations
     .option("checkpointLocation", f"{checkpoint_dir}/silver")
-    .trigger(  )  # availableNow=True
+    .trigger(availableNow=True)  # availableNow=True
     .start(f"{working_dir}/silver_hourly_metrics")
 )
 
@@ -855,7 +860,14 @@ def upsert_to_gold(batch_df, batch_id):
     spark.sql("""
         MERGE INTO nyctaxi_catalog.analytics.taxi_trips_gold AS target
         USING streaming_batch AS source
-        ON
+        ON target.tpep_pickup_datetime = source.tpep_pickup_datetime
+           AND target.pickup_zip = source.pickup_zip
+           AND target.dropoff_zip = source.dropoff_zip
+        WHEN MATCHED THEN
+            UPDATE SET
+                tpep_dropoff_datetime = source.tpep_dropoff_datetime,
+                trip_distance = source.trip_distance,
+                fare_amount = source.fare_amount
         WHEN NOT MATCHED THEN
             INSERT (
                 tpep_pickup_datetime, tpep_dropoff_datetime,
@@ -872,14 +884,14 @@ def upsert_to_gold(batch_df, batch_id):
 # Apply foreachBatch to streaming pipeline
 # Note: Cast timestamps from string to timestamp type
 gold_query = (spark.readStream
-    .format(  )  # Delta format
+    .format("delta")  # Delta format
     .load(f"{working_dir}/bronze_taxi_trips")
     .withColumn("tpep_pickup_datetime", to_timestamp(col("tpep_pickup_datetime")))
     .withColumn("tpep_dropoff_datetime", to_timestamp(col("tpep_dropoff_datetime")))
     .writeStream
-    .foreachBatch(  )  # Function name for batch processing
+    .foreachBatch(upsert_to_gold)  # Function name for batch processing
     .option("checkpointLocation", f"{checkpoint_dir}/gold")
-    .trigger(  )  # availableNow=True
+    .trigger(availableNow=True)  # availableNow=True
     .start()
 )
 
