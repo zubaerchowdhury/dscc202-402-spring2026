@@ -30,7 +30,13 @@
 # - delta.tables.DeltaTable
 # - matplotlib.pyplot
 # - sklearn.metrics (confusion_matrix, classification_report, ConfusionMatrixDisplay)
-
+import pandas as pd
+import mlflow
+from mlflow import MlflowClient
+from delta.tables import DeltaTable
+import matplotlib.pyplot as plt
+from pyspark.sql.functions import col
+from sklearn.metrics import confusion_matrix, classification_report, ConfusionMatrixDisplay
 
 # COMMAND ----------
 
@@ -45,7 +51,9 @@
 # COMMAND ----------
 
 # TODO: Load gold table
-
+gold_df = spark.read.format("delta").table("workspace.default.tweets_gold").select(
+    "sentiment_id", "predicted_sentiment_id"
+)
 
 # COMMAND ----------
 
@@ -64,7 +72,13 @@
 # COMMAND ----------
 
 # TODO: Generate classification report
+gold_pdf = gold_df.toPandas()
+y_true = gold_pdf["sentiment_id"]
+y_pred = gold_pdf["predicted_sentiment_id"]
+target_names = ["Negative", "Positive"]
 
+report = classification_report(y_true, y_pred, target_names=target_names, output_dict=True)
+print(classification_report(y_true, y_pred, target_names=target_names))
 
 # COMMAND ----------
 
@@ -85,7 +99,13 @@
 # COMMAND ----------
 
 # TODO: Create and display confusion matrix
-
+cm = confusion_matrix(y_true, y_pred)
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=target_names)
+fig, ax = plt.subplots(figsize=(6, 5))
+disp.plot(ax=ax, cmap="Blues", values_format="d")
+ax.set_title("Tweet Sentiment Confusion Matrix")
+plt.tight_layout()
+plt.show()
 
 # COMMAND ----------
 
@@ -110,7 +130,23 @@
 # COMMAND ----------
 
 # TODO: Log metrics and artifacts to MLflow
+mlflow.set_registry_uri("databricks-uc")
 
+silver_delta = DeltaTable.forName(spark, "workspace.default.tweets_silver")
+silver_delta_version = silver_delta.history(1).select("version").collect()[0][0]
+
+with mlflow.start_run(run_name="tweet_sentiment_performance_analysis") as run:
+    mlflow.log_metric("accuracy", report["accuracy"])
+
+    mlflow.log_param("model_name", "workspace.default.tweet_sentiment_model")
+    mlflow.log_param("model_version", 1)
+    mlflow.log_param("silver_delta_version", silver_delta_version)
+
+    mlflow.log_figure(fig, "confusion_matrix.png")
+
+    print(f"Logged MLflow run: {run.info.run_id}")
+    print(f"Accuracy: {report['accuracy']:.4f}")
+    print(f"Silver Delta version: {silver_delta_version}")
 
 # COMMAND ----------
 
