@@ -1,0 +1,246 @@
+{
+  "datasets": [
+    {
+      "name": "station_connections",
+      "displayName": "Station Connections (Map)",
+      "queryLines": [
+        "SELECT\n",
+        "  other_station,\n",
+        "  lat,\n",
+        "  lng,\n",
+        "  departure_count,\n",
+        "  arrival_count,\n",
+        "  total_trips,\n",
+        "  net_flow,\n",
+        "  t_lat,\n",
+        "  t_lng,\n",
+        "  target_station\n",
+        "FROM citibike_catalog.citibike.gold_station_connections\n",
+        "ORDER BY total_trips DESC"
+      ]
+    },
+    {
+      "name": "hourly_counts",
+      "displayName": "Hourly Counts",
+      "queryLines": [
+        "SELECT\n",
+        "  day_of_week,\n",
+        "  day_label,\n",
+        "  hour,\n",
+        "  departure_count,\n",
+        "  arrival_count,\n",
+        "  total_count,\n",
+        "  target_station\n",
+        "FROM citibike_catalog.citibike.gold_hourly_counts\n",
+        "ORDER BY day_of_week, hour"
+      ]
+    },
+    {
+      "name": "weekly_counts",
+      "displayName": "Weekly Counts",
+      "queryLines": [
+        "SELECT\n",
+        "  week_start,\n",
+        "  departures,\n",
+        "  arrivals,\n",
+        "  total_trips,\n",
+        "  target_station\n",
+        "FROM citibike_catalog.citibike.gold_weekly_counts\n",
+        "ORDER BY week_start"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "cb1a2e3f",
+      "displayName": "Citi Bike Station Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "a1b2c3d4",
+            "textbox_spec": "## \ud83d\udeb2 Citi Bike NYC \u2014 Station Dashboard\n\nTrips **to** and **from** the configured target station, with hourly and weekly trends.\n\nTarget station is controlled by the `target_station` parameter in `spark-pipeline.yml`."
+          },
+          "position": { "x": 0, "y": 0, "width": 6, "height": 2 }
+        },
+        {
+          "widget": {
+            "name": "e5f6a7b8",
+            "queries": [
+              {
+                "name": "connections_query",
+                "query": {
+                  "datasetName": "station_connections",
+                  "fields": [
+                    { "name": "other_station",   "expression": "`other_station`" },
+                    { "name": "lat",             "expression": "`lat`" },
+                    { "name": "lng",             "expression": "`lng`" },
+                    { "name": "departure_count", "expression": "`departure_count`" },
+                    { "name": "arrival_count",   "expression": "`arrival_count`" },
+                    { "name": "total_trips",     "expression": "`total_trips`" },
+                    { "name": "net_flow",        "expression": "`net_flow`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "map",
+              "encodings": {
+                "latitude":  { "fieldName": "lat",         "scale": { "type": "quantitative" } },
+                "longitude": { "fieldName": "lng",         "scale": { "type": "quantitative" } },
+                "size":      { "fieldName": "total_trips", "scale": { "type": "quantitative" } },
+                "color": {
+                  "fieldName": "net_flow",
+                  "scale": { "type": "quantitative", "colorScheme": "diverging-rdbu" }
+                },
+                "label": { "fieldName": "other_station" }
+              },
+              "frame": {
+                "title": "Trips to / from Target Station",
+                "showTitle": true
+              }
+            }
+          },
+          "position": { "x": 0, "y": 2, "width": 6, "height": 8 }
+        },
+        {
+          "widget": {
+            "name": "c9d0e1f2",
+            "queries": [
+              {
+                "name": "weekly_query",
+                "query": {
+                  "datasetName": "weekly_counts",
+                  "fields": [
+                    { "name": "week_start",  "expression": "`week_start`" },
+                    { "name": "departures",  "expression": "`departures`" },
+                    { "name": "arrivals",    "expression": "`arrivals`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "week_start",
+                  "scale": { "type": "temporal" },
+                  "axis": { "title": "Week" }
+                },
+                "y": {
+                  "fieldName": "departures",
+                  "scale": { "type": "quantitative" },
+                  "axis": { "title": "Trips" }
+                },
+                "color": { "fieldName": "series" }
+              },
+              "frame": {
+                "title": "Weekly Departures & Arrivals",
+                "showTitle": true,
+                "showLegend": true,
+                "seriesFields": [
+                  { "fieldName": "departures", "displayName": "Departures" },
+                  { "fieldName": "arrivals",   "displayName": "Arrivals" }
+                ]
+              }
+            }
+          },
+          "position": { "x": 0, "y": 10, "width": 6, "height": 5 }
+        },
+        {
+          "widget": {
+            "name": "d3e4f5a6",
+            "queries": [
+              {
+                "name": "hourly_dep_query",
+                "query": {
+                  "datasetName": "hourly_counts",
+                  "fields": [
+                    { "name": "hour",            "expression": "`hour`" },
+                    { "name": "day_label",       "expression": "`day_label`" },
+                    { "name": "departure_count", "expression": "`departure_count`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "hour",
+                  "scale": { "type": "quantitative" },
+                  "axis": { "title": "Hour of Day (0\u201323)" }
+                },
+                "y": {
+                  "fieldName": "departure_count",
+                  "scale": { "type": "quantitative" },
+                  "axis": { "title": "Departures" }
+                },
+                "color": {
+                  "fieldName": "day_label",
+                  "scale": { "type": "categorical" }
+                }
+              },
+              "frame": {
+                "title": "Departures by Hour & Day of Week",
+                "showTitle": true,
+                "showLegend": true
+              }
+            }
+          },
+          "position": { "x": 0, "y": 15, "width": 3, "height": 5 }
+        },
+        {
+          "widget": {
+            "name": "b7c8d9e0",
+            "queries": [
+              {
+                "name": "hourly_arr_query",
+                "query": {
+                  "datasetName": "hourly_counts",
+                  "fields": [
+                    { "name": "hour",          "expression": "`hour`" },
+                    { "name": "day_label",     "expression": "`day_label`" },
+                    { "name": "arrival_count", "expression": "`arrival_count`" }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "hour",
+                  "scale": { "type": "quantitative" },
+                  "axis": { "title": "Hour of Day (0\u201323)" }
+                },
+                "y": {
+                  "fieldName": "arrival_count",
+                  "scale": { "type": "quantitative" },
+                  "axis": { "title": "Arrivals" }
+                },
+                "color": {
+                  "fieldName": "day_label",
+                  "scale": { "type": "categorical" }
+                }
+              },
+              "frame": {
+                "title": "Arrivals by Hour & Day of Week",
+                "showTitle": true,
+                "showLegend": true
+              }
+            }
+          },
+          "position": { "x": 3, "y": 15, "width": 3, "height": 5 }
+        }
+      ]
+    }
+  ]
+}
