@@ -42,6 +42,10 @@ Demonstrate mastery of:
 }
 ```
 
+**Test Dataset**: `s3://dsas-datasets/test-tweets/`
+**Format**: JSON files (~300 tweets)
+**Purpose**: Smaller dataset for bootstrapping and testing your pipeline with faster iteration
+
 **Note**: Data is pre-provisioned. CloudFiles Auto Loader handles incremental ingestion. New data may be added daily - your automated job will process it.
 
 ---
@@ -117,18 +121,18 @@ Dashboard + MLflow Tracking
 **Output**: Delta table `tweets_gold`
 
 **Required Functionality**:
-1. Load sentiment model from Unity Catalog (`workspace.default.tweet_sentiment_model`)
+1. Load sentiment model from Unity Catalog (`workspace.default.small_sentiment_model`)
 2. Create Spark UDF for distributed ML inference
 3. Apply model to `cleaned_text` column
-4. Map model output labels (LABEL_0, LABEL_1, LABEL_2) to sentiment strings (negative, neutral, positive)
-5. Extract confidence scores and scale to 0-100 range
-6. Create binary sentiment indicators for metrics (sentiment_id, predicted_sentiment_id)
+4. Extract sentiment labels from model predictions (POSITIVE/NEGATIVE) and convert to lowercase
+5. Extract score from predictions array and scale to 0-100 range
+6. Create binary sentiment indicators: sentiment_id from ground truth (0 when sentiment='0', 1 when sentiment='4'), predicted_sentiment_id (0=negative, 1=positive)
 
 **Success Criteria**:
 - Row count matches silver layer
 - Predictions present for all rows
 - Confidence scores in valid range (0-100)
-- Binary IDs correctly mapped (0=negative/neutral, 1=positive)
+- Binary IDs correctly mapped (0=negative, 1=positive)
 - Model loaded from Unity Catalog (not local file)
 
 **Reference**: See Lab 0.5 for MLflow model loading and UDF creation
@@ -146,7 +150,7 @@ Dashboard + MLflow Tracking
 2. Calculate metrics per mention:
    - Count of positive mentions
    - Count of negative mentions
-   - Total mentions (positive + negative, excluding neutral)
+   - Total mentions (positive + negative)
    - Min and max timestamp (for tracking mention timeline)
 3. Filter out NULL mentions
 4. Sort by total mentions descending
@@ -187,9 +191,9 @@ Dashboard + MLflow Tracking
 |--------|------|----------------------|
 | ... | ... | All silver columns passed through |
 | predicted_score | double | Model confidence * 100 |
-| predicted_sentiment | string | Map LABEL_0/1/2 → negative/neutral/positive |
-| sentiment_id | int | Binary ground truth (0 or 1) |
-| predicted_sentiment_id | int | Binary prediction (0 or 1) |
+| predicted_sentiment | string | Extract and convert POSITIVE/NEGATIVE → positive/negative (lowercase) |
+| sentiment_id | int | Binary ground truth: sentiment='0'→0 (negative), sentiment='4'→1 (positive) |
+| predicted_sentiment_id | int | Binary prediction: 0=negative, 1=positive |
 
 ### Application Schema
 | Column | Type | Aggregation |
@@ -197,7 +201,7 @@ Dashboard + MLflow Tracking
 | mention | string | GROUP BY (lowercased username) |
 | positive | int | COUNT WHERE predicted_sentiment = 'positive' |
 | negative | int | COUNT WHERE predicted_sentiment = 'negative' |
-| total | int | positive + negative (exclude neutral) |
+| total | int | positive + negative |
 | min_timestamp | timestamp | MIN(timestamp) |
 | max_timestamp | timestamp | MAX(timestamp) |
 
@@ -317,8 +321,8 @@ Your pipeline should follow this development workflow:
 ### Gold Layer (12 points)
 - **3 pts**: Model successfully loaded from Unity Catalog
 - **3 pts**: Spark UDF applies predictions to all rows
-- **2 pts**: Label mapping correct (LABEL_X → sentiment string)
-- **2 pts**: Binary sentiment IDs created correctly
+- **2 pts**: Sentiment extraction and case conversion correct (POSITIVE/NEGATIVE → positive/negative)
+- **2 pts**: Binary prediction IDs correct (negative=0, positive=1)
 - **2 pts**: All required output columns present
 
 ### Application Layer (5 points)
@@ -385,7 +389,7 @@ final_project/
 **Solution**: Use unique checkpoint locations per pipeline run or delete old checkpoints before rerunning
 
 ### Model Not Found in Unity Catalog
-**Error**: "Model 'workspace.default.tweet_sentiment_model' not found"
+**Error**: "Model 'workspace.default.small_sentiment_model' not found"
 **Solution**: Verify you ran the setup utility notebook that registers the model
 
 ### Mention Explosion Missing Rows
@@ -412,6 +416,7 @@ final_project/
 - **Lab 0.3**: Streaming operations, triggers, checkpoints
 - **Lab 0.4**: CloudFiles Auto Loader, Delta Lake, schema evolution
 - **Lab 0.5**: MLflow model loading, Spark UDFs for ML inference
+- **Model**: distilbert/distilbert-base-uncased-finetuned-sst-2-english (registered as workspace.default.small_sentiment_model)
 - **Spark Declarative Pipelines Docs**: https://docs.databricks.com/en/delta-live-tables/python-ref.html
 - **MLflow Unity Catalog**: https://docs.databricks.com/en/mlflow/models-in-uc.html
 
@@ -420,7 +425,7 @@ final_project/
 ## Getting Started
 
 1. **Run the setup utility**: `final_project/tweet-pipeline/utilities/Run me first.ipynb`
-2. **Implement Bronze layer**: Start with CloudFiles ingestion
+2. **Implement Bronze layer**: Start with CloudFiles ingestion (use `test-tweets/` for faster initial testing)
 3. **Build Silver layer**: Extract mentions and clean text
 4. **Add Gold layer**: Load model and apply predictions
 5. **Create Application layer**: Aggregate metrics
