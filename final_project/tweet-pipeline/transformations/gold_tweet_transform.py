@@ -38,7 +38,7 @@
 import mlflow
 import pyspark.pipelines as dp
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType
-from pyspark.sql.functions import col, when
+from pyspark.sql.functions import col, lower, when
 
 # COMMAND ----------
 
@@ -99,7 +99,7 @@ model_output_schema = StructType([
 # COMMAND ----------
 
 # TODO: Load model and create Spark UDF
-model_uri = "models:/workspace.default.tweet_sentiment_model/1"
+model_uri = "models:/workspace.default.small_sentiment_model/1"
 sentiment_udf = mlflow.pyfunc.spark_udf(spark, model_uri=model_uri, result_type=model_output_schema)
 
 # COMMAND ----------
@@ -132,12 +132,7 @@ def gold_tweet_transform():
             .withColumn("prediction", sentiment_udf(col("cleaned_text")))
             .withColumn("predicted_label", col("prediction.label"))
             .withColumn("predicted_score", col("prediction.score") * 100)
-            .withColumn(
-                "predicted_sentiment",
-                when(col("predicted_label") == "LABEL_0", "negative")
-                .when(col("predicted_label") == "LABEL_1", "neutral")
-                .when(col("predicted_label") == "LABEL_2", "positive")
-            )
+            .withColumn("predicted_sentiment", lower(col("predicted_label")))
             .withColumn(
                 "sentiment_id",
                 when(col("sentiment") == "0", 0).otherwise(1),

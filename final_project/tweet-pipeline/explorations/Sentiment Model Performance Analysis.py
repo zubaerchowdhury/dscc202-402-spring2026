@@ -137,8 +137,12 @@ silver_delta_version = silver_delta.history(1).select("version").collect()[0][0]
 
 with mlflow.start_run(run_name="tweet_sentiment_performance_analysis") as run:
     mlflow.log_metric("accuracy", report["accuracy"])
+    for class_name in target_names:
+        mlflow.log_metric(f"{class_name}_precision", report[class_name]["precision"])
+        mlflow.log_metric(f"{class_name}_recall", report[class_name]["recall"])
+        mlflow.log_metric(f"{class_name}_f1", report[class_name]["f1-score"])
 
-    mlflow.log_param("model_name", "workspace.default.tweet_sentiment_model")
+    mlflow.log_param("model_name", "workspace.default.small_sentiment_model")
     mlflow.log_param("model_version", 1)
     mlflow.log_param("silver_delta_version", silver_delta_version)
 
