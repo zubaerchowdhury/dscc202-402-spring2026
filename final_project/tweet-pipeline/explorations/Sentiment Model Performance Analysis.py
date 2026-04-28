@@ -132,8 +132,11 @@ plt.show()
 # TODO: Log metrics and artifacts to MLflow
 mlflow.set_registry_uri("databricks-uc")
 
-silver_delta = DeltaTable.forName(spark, "workspace.default.tweets_silver")
-silver_delta_version = silver_delta.history(1).select("version").collect()[0][0]
+silver_delta_version = (
+    spark.sql("DESCRIBE HISTORY workspace.default.tweets_silver LIMIT 1")
+         .select("version")
+         .collect()[0][0]
+)
 
 with mlflow.start_run(run_name="tweet_sentiment_performance_analysis") as run:
     mlflow.log_metric("accuracy", report["accuracy"])
