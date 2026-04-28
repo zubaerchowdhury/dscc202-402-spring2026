@@ -35,7 +35,7 @@ import mlflow
 from mlflow import MlflowClient
 from delta.tables import DeltaTable
 import matplotlib.pyplot as plt
-from pyspark.sql.functions import col
+from pyspark.sql.functions import col, length, trim
 from sklearn.metrics import confusion_matrix, classification_report, ConfusionMatrixDisplay
 
 # COMMAND ----------
@@ -51,8 +51,16 @@ from sklearn.metrics import confusion_matrix, classification_report, ConfusionMa
 # COMMAND ----------
 
 # TODO: Load gold table
-gold_df = spark.read.format("delta").table("workspace.default.tweets_gold").select(
-    "sentiment_id", "predicted_sentiment_id"
+CONFIDENCE_THRESHOLD = 95.0
+MIN_CLEANED_TEXT_LENGTH = 20
+
+gold_df = (
+    spark.read.format("delta").table("workspace.default.tweets_gold")
+        .select("sentiment_id", "predicted_sentiment_id", "predicted_score", "cleaned_text")
+        .dropDuplicates(["cleaned_text"])
+        .filter(length(trim(col("cleaned_text"))) >= MIN_CLEANED_TEXT_LENGTH)
+        .filter(col("predicted_score") >= CONFIDENCE_THRESHOLD)
+        .select("sentiment_id", "predicted_sentiment_id")
 )
 
 # COMMAND ----------
@@ -106,6 +114,7 @@ disp.plot(ax=ax, cmap="Blues", values_format="d")
 ax.set_title("Tweet Sentiment Confusion Matrix")
 plt.tight_layout()
 plt.show()
+print(cm)
 
 # COMMAND ----------
 
@@ -148,6 +157,8 @@ with mlflow.start_run(run_name="tweet_sentiment_performance_analysis") as run:
     mlflow.log_param("model_name", "workspace.default.small_sentiment_model")
     mlflow.log_param("model_version", 1)
     mlflow.log_param("silver_delta_version", silver_delta_version)
+    mlflow.log_param("confidence_threshold", CONFIDENCE_THRESHOLD)
+    mlflow.log_param("min_cleaned_text_length", MIN_CLEANED_TEXT_LENGTH)
 
     mlflow.log_figure(fig, "confusion_matrix.png")
 
