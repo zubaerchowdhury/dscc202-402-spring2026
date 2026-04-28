@@ -127,13 +127,16 @@ except Exception as e:
 pyfunc_model = mlflow.pyfunc.load_model(model_uri)
 
 # The model is logged with an input example
-input_data = pyfunc_model.input_example
+#input_data = pyfunc_model.input_example
+#input_data = model_info.input_example
+input_data = ["This is a great day!"]
 
 # Verify the model with the provided input data using the logged dependencies.
 # For more details, refer to:
 # https://mlflow.org/docs/latest/models.html#validate-models-before-deployment
-mlflow.models.predict(
-    model_uri=model_uri,
-    input_data=input_data,
-    env_manager="uv",
-)
+#mlflow.models.predict(
+#    model_uri=model_uri,
+#    input_data=input_data,
+#    env_manager="uv",
+#)
+print(pyfunc_model.predict(input_data))
