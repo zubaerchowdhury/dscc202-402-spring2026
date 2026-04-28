@@ -1,0 +1,492 @@
+{
+  "datasets": [
+    {
+      "name": "d5adac76",
+      "displayName": "Total Tweets Count (b)",
+      "queryLines": [
+        "SELECT COUNT(*) AS total_tweets\r\n",
+        "FROM workspace.default.tweets_bronze;"
+      ]
+    },
+    {
+      "name": "f0030534",
+      "displayName": "Tweets with Mentions Counter (s)",
+      "queryLines": [
+        "SELECT COUNT(*) AS tweets_with_mentions\r\n",
+        "FROM workspace.default.tweets_silver\r\n",
+        "WHERE mention IS NOT NULL;"
+      ]
+    },
+    {
+      "name": "98835b1d",
+      "displayName": "Tweets without Mentions Counter (s)",
+      "queryLines": [
+        "SELECT COUNT(*) AS tweets_without_mentions\r\n",
+        "FROM workspace.default.tweets_silver\r\n",
+        "WHERE mention IS NULL;"
+      ]
+    },
+    {
+      "name": "9550ef05",
+      "displayName": "Top 10 Users by Tweet Count (b)",
+      "queryLines": [
+        "SELECT\r\n",
+        "  user,\r\n",
+        "  COUNT(*) AS tweet_count\r\n",
+        "FROM workspace.default.tweets_bronze\r\n",
+        "GROUP BY user\r\n",
+        "ORDER BY tweet_count DESC\r\n",
+        "LIMIT 10;"
+      ]
+    },
+    {
+      "name": "92b6f957",
+      "displayName": "Top 10 Most Positively Mentioned (app layer)",
+      "queryLines": [
+        "SELECT mention, positive\r\n",
+        "FROM workspace.default.gold_tweet_aggregations\r\n",
+        "ORDER BY positive DESC\r\n",
+        "LIMIT 10;"
+      ]
+    },
+    {
+      "name": "1e155246",
+      "displayName": "Top 10 Most Negatively Mentioned (app layer)",
+      "queryLines": [
+        "SELECT mention, negative\r\n",
+        "FROM workspace.default.gold_tweet_aggregations\r\n",
+        "ORDER BY negative DESC\r\n",
+        "LIMIT 10;"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "2a8c70c9",
+      "displayName": "Dashboard",
+      "layout": [
+        {
+          "widget": {
+            "name": "d7529bd8",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d5adac76",
+                  "fields": [
+                    {
+                      "name": "sum(total_tweets)",
+                      "expression": "SUM(`total_tweets`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Total Tweets Counter",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(total_tweets)"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "623fc352",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "f0030534",
+                  "fields": [
+                    {
+                      "name": "tweets_with_mentions",
+                      "expression": "`tweets_with_mentions`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Tweets with Mentions",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "tweets_with_mentions",
+                  "displayName": "Tweets with Mentions"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "724f240e",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "98835b1d",
+                  "fields": [
+                    {
+                      "name": "tweets_without_mentions",
+                      "expression": "`tweets_without_mentions`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "Tweets without Mentions",
+                "showTitle": true
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "tweets_without_mentions",
+                  "displayName": "Tweets without Mentions"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 4,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "01ae17d1",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "9550ef05",
+                  "fields": [
+                    {
+                      "name": "user",
+                      "expression": "`user`"
+                    },
+                    {
+                      "name": "tweet_count",
+                      "expression": "`tweet_count`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Top 10 Users by Tweet Count",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "user",
+                  "displayName": "User",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "tweet_count",
+                  "displayName": "Tweet Count",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "user",
+                  "displayName": "User",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 0,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "15e55e78",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "92b6f957",
+                  "fields": [
+                    {
+                      "name": "mention",
+                      "expression": "`mention`"
+                    },
+                    {
+                      "name": "positive",
+                      "expression": "`positive`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Top 10 Most Positively Mentioned",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mention",
+                  "displayName": "Mention",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "positive",
+                  "displayName": "Positive Mentions",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "mention",
+                  "displayName": "Mention",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "@mileycyrus",
+                        "color": "#0d5e29"
+                      },
+                      {
+                        "value": "@ddlovato",
+                        "color": "#177f3a"
+                      },
+                      {
+                        "value": "@tommcfly",
+                        "color": "#1fa750"
+                      },
+                      {
+                        "value": "@jonasbrothers",
+                        "color": "#27ae60"
+                      },
+                      {
+                        "value": "@davidarchie",
+                        "color": "#2ecc71"
+                      },
+                      {
+                        "value": "@taylorswift13",
+                        "color": "#4caf50"
+                      },
+                      {
+                        "value": "@tomfelton",
+                        "color": "#66bb6a"
+                      },
+                      {
+                        "value": "@donniewahlberg",
+                        "color": "#81c784"
+                      },
+                      {
+                        "value": "@jonathanrknight",
+                        "color": "#a5d6a7"
+                      },
+                      {
+                        "value": "@gfalcone601",
+                        "color": "#c8e6c9"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 6,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "ab68de53",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "1e155246",
+                  "fields": [
+                    {
+                      "name": "mention",
+                      "expression": "`mention`"
+                    },
+                    {
+                      "name": "negative",
+                      "expression": "`negative`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Top 10 Most Negatively Mentioned",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mention",
+                  "displayName": "Mention",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "negative",
+                  "displayName": "Negative Mentions",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "mention",
+                  "displayName": "Mention",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "@tommcfly",
+                        "color": "#8b0000"
+                      },
+                      {
+                        "value": "@mileycyrus",
+                        "color": "#a52a2a"
+                      },
+                      {
+                        "value": "@ddlovato",
+                        "color": "#c0392b"
+                      },
+                      {
+                        "value": "@jonasbrothers",
+                        "color": "#d32f2f"
+                      },
+                      {
+                        "value": "@donniewahlberg",
+                        "color": "#e74c3c"
+                      },
+                      {
+                        "value": "@jonathanrknight",
+                        "color": "#f44336"
+                      },
+                      {
+                        "value": "@jordanknight",
+                        "color": "#ef5350"
+                      },
+                      {
+                        "value": "@aplusk",
+                        "color": "#e57373"
+                      },
+                      {
+                        "value": "@mitchelmusso",
+                        "color": "#ff7979"
+                      },
+                      {
+                        "value": "@banksyart",
+                        "color": "#ffb3b3"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 7,
+            "width": 6,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "2318250f",
+            "multilineTextboxSpec": {
+              "lines": [
+                "<span style=\"text-align:center;display:block\"><span style=\"font-size: 48px;line-height: 1.5;font-family: Verdana;\">**Tweet**</span></span>\n",
+                "\n",
+                "<span style=\"text-align:center;display:block\"><span style=\"font-size: 48px;line-height: 1.5;font-family: Verdana;\">**Analytics**</span></span>"
+              ],
+              "verticalAlign": "VERTICAL_ALIGN_CENTER"
+            },
+            "specExtensions": {
+              "widgetBackgroundColor": {
+                "dark": "#105898"
+              },
+              "widgetBorderColor": {
+                "dark": "#00192E"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 4
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
