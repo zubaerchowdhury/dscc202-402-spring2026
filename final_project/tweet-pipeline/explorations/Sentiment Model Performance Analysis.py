@@ -54,6 +54,7 @@ from sklearn.metrics import confusion_matrix, classification_report, ConfusionMa
 gold_df = spark.read.format("delta").table("workspace.default.tweets_gold").select(
     "sentiment_id", "predicted_sentiment_id"
 )
+
 # COMMAND ----------
 
 # MAGIC %md
@@ -132,7 +133,7 @@ print(cm)
 # TODO: Log metrics and artifacts to MLflow
 mlflow.set_registry_uri("databricks-uc")
 mlflow.set_tracking_uri("databricks")
-mlflow.set_experiment("/Users/<your-databricks-username>/tweet_sentiment_performance_analysis")
+mlflow.set_experiment("/Users/zrchy16@gmail.com/dscc202-402-spring2026/final_project/tweet-pipeline/explorations/Sentiment Model Performance Analysis")
 
 UC_MODEL_NAME = "workspace.default.small_sentiment_model"
 GOLD_TABLE = "workspace.default.tweets_gold"
@@ -156,6 +157,7 @@ with mlflow.start_run(run_name="tweet_sentiment_performance_analysis") as run:
     mlflow.log_param("silver_delta_version", silver_delta_version)
 
     mlflow.log_figure(fig, "confusion_matrix.png")
+    mlflow.log_dict(report, "classification_report.json")
 
     client = MlflowClient()
     client.set_model_version_tag(
