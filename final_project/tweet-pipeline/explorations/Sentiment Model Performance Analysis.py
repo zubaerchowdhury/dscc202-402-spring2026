@@ -131,6 +131,11 @@ print(cm)
 
 # TODO: Log metrics and artifacts to MLflow
 mlflow.set_registry_uri("databricks-uc")
+mlflow.set_tracking_uri("databricks")
+mlflow.set_experiment("/Users/<your-databricks-username>/tweet_sentiment_performance_analysis")
+
+UC_MODEL_NAME = "workspace.default.small_sentiment_model"
+GOLD_TABLE = "workspace.default.tweets_gold"
 
 silver_delta_version = (
     spark.sql("DESCRIBE HISTORY workspace.default.tweets_silver LIMIT 1")
@@ -145,15 +150,30 @@ with mlflow.start_run(run_name="tweet_sentiment_performance_analysis") as run:
         mlflow.log_metric(f"{class_name}_recall", report[class_name]["recall"])
         mlflow.log_metric(f"{class_name}_f1", report[class_name]["f1-score"])
 
-    mlflow.log_param("model_name", "workspace.default.small_sentiment_model")
+    mlflow.log_param("model_name", UC_MODEL_NAME)
     mlflow.log_param("model_version", 1)
+    mlflow.log_param("data_path", GOLD_TABLE)
     mlflow.log_param("silver_delta_version", silver_delta_version)
 
     mlflow.log_figure(fig, "confusion_matrix.png")
 
+    client = MlflowClient()
+    client.set_model_version_tag(
+        name=UC_MODEL_NAME,
+        version="1",
+        key="evaluation_run_id",
+        value=run.info.run_id,
+    )
+    client.set_model_version_tag(
+        name=UC_MODEL_NAME,
+        version="1",
+        key="evaluation_accuracy",
+        value=f"{report['accuracy']:.4f}",
+    )
+
     print(f"Logged MLflow run: {run.info.run_id}")
     print(f"Accuracy: {report['accuracy']:.4f}")
-    print(f"Silver Delta version: {silver_delta_version}")
+    print(f"Linked to UC model: {UC_MODEL_NAME} v1")
 
 # COMMAND ----------
 

@@ -30,12 +30,15 @@
       "name": "9550ef05",
       "displayName": "Top 10 Users by Tweet Count (b)",
       "queryLines": [
-        "SELECT\r\n",
-        "  user,\r\n",
-        "  COUNT(*) AS tweet_count\r\n",
-        "FROM workspace.default.tweets_bronze\r\n",
-        "GROUP BY user\r\n",
-        "ORDER BY tweet_count DESC\r\n",
+        "SELECT\n",
+        "  user,\n",
+        "  COUNT(*) AS tweet_count\n",
+        "FROM\n",
+        "  workspace.default.tweets_bronze\n",
+        "GROUP BY\n",
+        "  user\n",
+        "ORDER BY\n",
+        "  tweet_count DESC\n",
         "LIMIT 10;"
       ]
     },
@@ -43,9 +46,13 @@
       "name": "92b6f957",
       "displayName": "Top 10 Most Positively Mentioned (app layer)",
       "queryLines": [
-        "SELECT mention, positive\r\n",
-        "FROM workspace.default.gold_tweet_aggregations\r\n",
-        "ORDER BY positive DESC\r\n",
+        "SELECT\n",
+        "  mention,\n",
+        "  positive\n",
+        "FROM\n",
+        "  workspace.default.gold_tweet_aggregations\n",
+        "ORDER BY\n",
+        "  positive DESC\n",
         "LIMIT 10;"
       ]
     },
@@ -53,9 +60,13 @@
       "name": "1e155246",
       "displayName": "Top 10 Most Negatively Mentioned (app layer)",
       "queryLines": [
-        "SELECT mention, negative\r\n",
-        "FROM workspace.default.gold_tweet_aggregations\r\n",
-        "ORDER BY negative DESC\r\n",
+        "SELECT\n",
+        "  mention,\n",
+        "  negative\n",
+        "FROM\n",
+        "  workspace.default.gold_tweet_aggregations\n",
+        "ORDER BY\n",
+        "  negative DESC\n",
         "LIMIT 10;"
       ]
     }
@@ -218,7 +229,10 @@
                   "fieldName": "user",
                   "displayName": "User",
                   "scale": {
-                    "type": "categorical"
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y"
+                    }
                   }
                 },
                 "y": {
@@ -279,7 +293,10 @@
                   "fieldName": "mention",
                   "displayName": "Mention",
                   "scale": {
-                    "type": "categorical"
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y"
+                    }
                   }
                 },
                 "y": {
@@ -382,7 +399,10 @@
                   "fieldName": "mention",
                   "displayName": "Mention",
                   "scale": {
-                    "type": "categorical"
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y"
+                    }
                   }
                 },
                 "y": {
